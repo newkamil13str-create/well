@@ -1,0 +1,109 @@
+// apps/web/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  nama          String
+  email         String    @unique
+  password      String
+  noWhatsapp    String?   @unique
+  role          Role      @default(USER)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  orders        Order[]
+  otps          OTP[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model OTP {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  kode      String
+  tipe      OTPType
+  expiredAt DateTime
+  digunakan Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+enum OTPType {
+  LOGIN
+  REGISTER
+  FORGOT_PASSWORD
+}
+
+model Produk {
+  id         String      @id @default(cuid())
+  nama       String
+  slug       String      @unique
+  harga      Int
+  stok       Int?        // null = unlimited
+  deskripsi  String      @db.Text
+  gambar     String[]    // array URL gambar (Cloudinary)
+  kategori   String?
+  aktif      Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  orderItems OrderItem[]
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  userId           String
+  user             User        @relation(fields: [userId], references: [id])
+  invoiceId        String      @unique @default(cuid())
+  status           OrderStatus @default(PENDING)
+  metodePembayaran String?
+  totalHarga       Int
+  totalBayar       Int         @default(0) // setelah fee
+  feePayment       Int         @default(0)
+  namaLengkap      String
+  noWhatsapp       String
+  alamat           String      @db.Text
+  catatan          String?
+  paymentData      Json?       // response dari pakasir
+  expiredAt        DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  items            OrderItem[]
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DONE
+  CANCELLED
+}
+
+model OrderItem {
+  id       String @id @default(cuid())
+  orderId  String
+  order    Order  @relation(fields: [orderId], references: [id])
+  produkId String
+  produk   Produk @relation(fields: [produkId], references: [id])
+  qty      Int
+  harga    Int
+  subtotal Int
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String @db.Text
+}
